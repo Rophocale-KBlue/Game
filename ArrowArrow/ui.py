@@ -41,16 +41,20 @@ def draw_gradient_bg(surface):
         pygame.draw.line(surface, (r, g, b), (0, y), (WIDTH, y))
 
 class Button:
-    def __init__(self, text, center, size, callback, font=None):
+    def __init__(self, text, center, size, callback, font=None, image=None):
         self.text = text
         self.base_rect = pygame.Rect(0, 0, *size)
         self.base_rect.center = center
         self.callback = callback
         self.font = font or get_font(30, bold=True)
+        self.image = None
+        if image:
+            self.image = pygame.image.load(image).convert_alpha()
+            self.image = pygame.transform.scale(self.image,size)
         self.hovered = False
         self.scale = 1.0
         self.target_scale = 1.0
-        self.hover_scale = 1.08
+        self.hover_scale = 1.03
 
     def update(self, mouse_pos):
         self.hovered = self.base_rect.collidepoint(mouse_pos)
@@ -63,10 +67,14 @@ class Button:
         rect = pygame.Rect(0, 0, w, h)
         rect.center = self.base_rect.center
         color = BTN_HOVER if self.hovered else BTN_NORMAL
-        pygame.draw.rect(surface, color, rect, border_radius=16)
-        pygame.draw.rect(surface, (255, 255, 255), rect, width=2, border_radius=16)
-        text_surf = self.font.render(self.text, True, BTN_TEXT)
-        surface.blit(text_surf, text_surf.get_rect(center=rect.center))
+        if self.image:
+            img = pygame.transform.smoothscale(self.image,(rect.width, rect.height))
+            surface.blit(img,img.get_rect(center=rect.center))
+        else:
+            pygame.draw.rect(surface,color,rect,border_radius=16)
+            pygame.draw.rect(surface,(255, 255, 255),rect,width=2,border_radius=16)
+            text_surf = self.font.render(self.text,True, BTN_TEXT)
+            surface.blit(text_surf,text_surf.get_rect(center=rect.center))
 
     def handle_event(self, event, offset=(0, 0)):
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:

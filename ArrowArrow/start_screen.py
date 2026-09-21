@@ -65,20 +65,21 @@ class _FloatingArrow:
 
 class StartScreen:
     def __init__(self, on_start, on_level_select, on_achievement, on_settings):
+        self.background = pygame.image.load("image/start_background.png").convert()
         self.decor = [_FloatingArrow() for _ in range(18)]
-        btn_w, btn_h = 220, 60
+        btn_w, btn_h = 200, 100
         cx = WIDTH // 2
         self.buttons = [
-            Button("开始游戏", (cx, HEIGHT - 260), (btn_w, btn_h), on_start),
-            Button("选择关卡", (cx, HEIGHT - 180), (btn_w, btn_h), on_level_select),
+            Button("开始游戏", (cx, HEIGHT - 220), (btn_w, btn_h), on_start,image="image/begin_button.png"),
+            Button("选择关卡", (cx, HEIGHT - 140), (btn_w, btn_h), on_level_select,image="image/level_select_button.png"),
         ]
-        small_w, small_h = 150, 52
-        gap = 40
+        small_w, small_h = 150, 100
+        gap = 5
         total = small_w * 2 + gap
         left_x = WIDTH // 2 - total // 2 + small_w // 2
         right_x = WIDTH // 2 + total // 2 - small_w // 2
-        self.buttons.append(Button("成就", (left_x, HEIGHT - 100), (small_w, small_h), on_achievement))
-        self.buttons.append(Button("设置", (right_x, HEIGHT - 100), (small_w, small_h), on_settings))
+        self.buttons.append(Button("成就", (left_x, HEIGHT - 60), (small_w, small_h), on_achievement,image="image/achievements_button.png"))
+        self.buttons.append(Button("设置", (right_x, HEIGHT - 60), (small_w, small_h), on_settings,image="image/setting_button.png"))
         self.title_font = get_font(72, bold=True)
         self.sub_font = get_font(22)
 
@@ -93,15 +94,7 @@ class StartScreen:
             b.update(pygame.mouse.get_pos())
 
     def draw(self, surface):
-        draw_gradient_bg(surface)
-        for a in self.decor:
-            a.draw(surface)
-        title = self.title_font.render("一箭又一箭", True, TITLE_COLOR)
-        shadow = self.title_font.render("一箭又一箭", True, TITLE_SHADOW)
-        tr = title.get_rect(center=(WIDTH // 2, 150))
-        surface.blit(shadow, tr.move(4, 4))
-        surface.blit(title, tr)
-        sub = self.sub_font.render("点击箭头，让它飞出棋盘", True, (180, 190, 210))
-        surface.blit(sub, sub.get_rect(center=(WIDTH // 2, 230)))
+        bg = pygame.transform.smoothscale(self.background,surface.get_size())
+        surface.blit(bg, (0, 0))
         for b in self.buttons:
             b.draw(surface)

@@ -16,10 +16,10 @@ ARROW_BLOCKED = (255, 90, 90)
 ARROW_FLYING = (120, 255, 160)
 
 DIRS = {
-    "up":    (0, -1),
-    "down":  (0, 1),
-    "left":  (-1, 0),
-    "right": (1, 0),
+    "up": (-1, 0),
+    "down": (1, 0),
+    "left": (0, -1),
+    "right": (0, 1)
 }
 
 FONT_CANDIDATES = [
@@ -34,43 +34,12 @@ FONT_CANDIDATES = [
 ]
 
 LEVELS = [
-    {
-        "name": "第一关",
-        "grid_size": 3,
-        "mistakes": 3,
-        "arrows": [
-            (0, 0, "right"),
-            (1, 1, "up"),
-            (2, 2, "left"),
-        ],
-    },
-    {
-        "name": "第二关",
-        "grid_size": 4,
-        "mistakes": 4,
-        "arrows": [
-            (0, 0, "right"), (0, 3, "down"),
-            (1, 1, "up"),   (1, 2, "left"),
-            (2, 0, "right"), (2, 3, "up"),
-            (3, 1, "left"),  (3, 2, "down"),
-            (0, 2, "down"),  (2, 1, "right"),
-        ],
-    },
-    {
-        "name": "第三关",
-        "grid_size": 5,
-        "mistakes": 5,
-        "arrows": [
-            (0, 0, "right"), (0, 2, "down"), (0, 4, "left"),
-            (1, 1, "up"),    (1, 3, "down"),
-            (2, 0, "right"), (2, 2, "up"),   (2, 4, "left"),
-            (3, 1, "down"),  (3, 3, "up"),
-            (4, 0, "right"), (4, 2, "down"), (4, 4, "left"),
-            (0, 1, "down"),  (1, 4, "left"),
-            (2, 3, "up"),    (3, 0, "right"),
-            (4, 1, "up"),    (1, 0, "right"), (3, 4, "left"),
-        ],
-    },
+    {"name": "第一关", "grid_size": 3, "arrow_count": 3,  "mistakes": 3},
+    {"name": "第二关", "grid_size": 4, "arrow_count": 10, "mistakes": 3},
+    {"name": "第三关", "grid_size": 5, "arrow_count": 20, "mistakes": 3},
+    {"name":"第四关","grid_size":5,"arrow_count":20,"mistakes":3,"time_limit":180},
+    {"name":"第五关", "grid_size":5,"arrow_count":20,"mistakes":3,"time_limit":60},
+    {"name":"第六关","grid_size":6,"arrow_count":25,"mistakes":3,"time_limit":60}
 ]
 
 # ---------- 成就定义 ----------
