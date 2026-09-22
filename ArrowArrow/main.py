@@ -121,7 +121,7 @@ def main():
     pygame.init()
     pygame.mixer.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
-    pygame.display.set_caption("一箭又一箭")
+    pygame.display.set_caption("飞箭")
     load_bgm("music/duosuoleisi.mp3")
 
     clock = pygame.time.Clock()

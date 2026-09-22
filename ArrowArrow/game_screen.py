@@ -86,10 +86,13 @@ class _GameArrow:
         self.anim_t = 0.0
         self.offset = [0.0, 0.0]
         self.blocked_timer = 0.0
+        self.fly_distance = 0
+        self.fly_speed = 700
 
-    def start_flying(self):
+    def start_flying(self, distance):
         self.state = "flying"
         self.anim_t = 0.0
+        self.fly_distance = distance
 
     def start_blocked(self):
         self.state = "blocked"
@@ -97,11 +100,13 @@ class _GameArrow:
 
     def update(self, dt):
         if self.state == "flying":
-            self.anim_t += dt * 6
+            #self.anim_t += dt * 6
             dr, dc = DIRS[self.direction]
-            self.offset[0] += dc * 14
-            self.offset[1] += dr * 14
-            if self.anim_t > 1.0:
+            distance = self.fly_speed * dt
+            self.offset[0] += dc * distance
+            self.offset[1] += dr * distance
+            self.anim_t += distance
+            if self.anim_t >= self.fly_distance:
                 self.state = "gone"
         elif self.state == "blocked":
             self.blocked_timer += dt
@@ -120,20 +125,26 @@ class GameScreen:
         self.fail_sound = pygame.mixer.Sound("music/ngm.mp3")
         self.fail_sound.set_volume(0.8)
         self.fail_sound_played = False
+        self.mistake_sound = pygame.mixer.Sound("music/ikun.flac")
+        self.mistake_sound.set_volume(0.8)
         self.time_limit = LEVELS[level_index].get("time_limit",None)
         self.remaining_time = self.time_limit
         self.on_back = on_back
         self.ach = achievement_manager or AchievementManager()
         self.settings_manager = settings_manager
         self.load_level(level_index)
-        self.restart_btn = Button("重新开始", (WIDTH - 110, 60), (160, 46), self.restart)
-        self.back_btn = Button("返回主菜单", (WIDTH - 100, 120), (160, 100), self.on_back,image="image/back_menu.png")
-        self.hud_font = get_font(22)
+        self.restart_btn = Button("重新开始", (WIDTH - 90, 50), (160, 120), self.restart,image="image/restart.png")
+        self.back_btn = Button("返回主菜单", (WIDTH - 90, 120), (160, 120), self.on_back,image="image/back_menu.png")
+        self.tip_btn = Button( "提示", (WIDTH - 90, HEIGHT - 80), (130, 80),  self.show_tip,image="image/tip.png")
+        self.tip_arrow = None  # 当前提示的箭头
+        self.hud_font = get_font(18)
         self.sub_font = get_font(22)
         self.unlock_toast_timer = 0.0   # 剩余总时间
         self.unlock_toast_text = ""
         self.unlock_toast_duration = 2.5  # 总时长
         self.unlock_toast_slide = 0.0   #滑入进度，范围在0-1
+        self.tip_arrow = None
+        self.tip_timer = 0
 
     def load_level(self, index):
         self.level_index = index
@@ -180,24 +191,60 @@ class GameScreen:
 
         while 0 <= r < self.grid_size and 0 <= c < self.grid_size:
             target = self.arrow_at(r, c)
-            if target is not None:
+            if target is not None and target.state in ("idle", "blocked"):
                 return False
             r += dr
             c += dc
         return True
 
+    def show_tip(self):
+        if self.status != "playing":
+            return
+        # 找可以直接飞出的箭头
+        possible = []
+        for arrow in self.arrows:
+            if arrow.state == "idle":
+                if self.is_path_clear(arrow):
+                    possible.append(arrow)
+        if possible:
+            # 随机提示一个
+            self.tip_arrow = random.choice(possible)
+            self.tip_timer = 3
+
     def click_cell(self, row, col):
         if self.status != "playing":
             return
+        # 点击后取消提示
+        self.tip_arrow = None
         arrow = self.arrow_at(row, col)
         if arrow is None or arrow.state != "idle":
             return
         if self.is_path_clear(arrow):
-            arrow.start_flying()
+            dr, dc = DIRS[arrow.direction]
+            if dr == -1:  # 上
+                distance = (arrow.row + 1) * self.cell_size
+            elif dr == 1:  # 下
+                distance = (self.grid_size - arrow.row) * self.cell_size
+            elif dc == -1:  # 左
+                distance = (arrow.col + 1) * self.cell_size
+            elif dc == 1:  # 右
+                distance = (self.grid_size - arrow.col) * self.cell_size
+            arrow.start_flying(distance)
             self.ach.on_arrow_flew(1)
         else:
             arrow.start_blocked()
             self.mistakes_left -= 1
+            # 普通失误播放 ikun
+            if self.mistakes_left > 0:
+                if self.settings_manager:
+                    if self.settings_manager.data["sfx_enabled"]:
+                        self.mistake_sound.set_volume(
+                            self.settings_manager.data["sfx_volume"] / 100
+                        )
+                        self.mistake_sound.play()
+                else:
+                    self.mistake_sound.play()
+            # 游戏失败播放ngm
             if self.mistakes_left <= 0:
                 self.status = "lose"
                 if not self.fail_sound_played:
@@ -230,6 +277,7 @@ class GameScreen:
     def handle_event(self, event):
         self.restart_btn.handle_event(event)
         self.back_btn.handle_event(event)
+        self.tip_btn.handle_event(event)
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self.status == "playing":
                 mx, my = event.pos
@@ -259,6 +307,7 @@ class GameScreen:
         mp = pygame.mouse.get_pos()
         self.restart_btn.update(mp)
         self.back_btn.update(mp)
+        self.tip_btn.update(mp)
         #箭头
         for a in self.arrows:
             a.update(dt)
@@ -281,6 +330,11 @@ class GameScreen:
             if self.result_timer >= 2.0:
                 self.on_back()
 
+        #提示3秒消失
+        if self.tip_timer > 0:
+            self.tip_timer -= dt
+            if self.tip_timer <= 0:
+                self.tip_arrow = None
         # 解锁成就提示
         new_ones = self.ach.consume_newly_unlocked()
         if new_ones:
@@ -324,15 +378,46 @@ class GameScreen:
         surface.blit(bg, (0, 0))
         level_name = LEVELS[self.level_index]["name"]
         remaining = sum(1 for a in self.arrows if a.state != "gone")
-        hud = self.hud_font.render(f"{level_name}   剩余箭头: {remaining}", True, (230, 235, 245))
+        # ===== HUD信息框 =====
+        hud_box = pygame.Surface((155, 110), pygame.SRCALPHA)
+        # 背景
+        pygame.draw.rect(
+            hud_box,
+            (40, 35, 25, 180),
+            hud_box.get_rect(),
+            border_radius=18
+        )
+        # 边框
+        pygame.draw.rect(
+            hud_box,
+            (220, 190, 130),
+            hud_box.get_rect(),
+            width=3,
+            border_radius=18
+        )
+        # 关卡
+        level_text = self.hud_font.render( level_name, True,  (255, 220, 120))
+        arrow_text = self.hud_font.render( f"➤ 剩余箭头: {remaining}", True, (245, 245, 235))
+        mistake_text = self.hud_font.render( f"⚠ 失误: {self.mistakes_left}/{self.max_mistakes}", True, (255, 150, 120))
+        hud_box.blit(level_text, (15, 10))
+        hud_box.blit(arrow_text, (15, 35))
+        hud_box.blit(mistake_text, (15, 55))
+        # 倒计时
         if self.time_limit is not None:
             minutes = int(self.remaining_time) // 60
             seconds = int(self.remaining_time) % 60
-            timer = self.hud_font.render(f"时间:{minutes:02d}:{seconds:02d}", True, (255, 220, 100))
-            surface.blit(timer, (30, 90))
-        surface.blit(hud, (30, 24))
-        mistakes = self.hud_font.render(f"失误剩余: {self.mistakes_left} / {self.max_mistakes}", True, (255, 180, 120))
-        surface.blit(mistakes, (30, 56))
+            # 最后10秒变红
+            if self.remaining_time <= 10:
+                timer_color = (255, 80, 80)
+            else:
+                timer_color = (255, 220, 120)
+            timer_text = self.hud_font.render(
+                f"⏱ 时间: {minutes:02d}:{seconds:02d}",
+                True,
+                timer_color
+            )
+            hud_box.blit(timer_text, (15, 76))
+        surface.blit(hud_box, (30, 20))
 
         board_px = self.cell_size * self.grid_size
         board_rect = pygame.Rect(self.board_x, self.board_y, board_px, board_px)
@@ -390,7 +475,10 @@ class GameScreen:
             cx += a.offset[0]
             cy += a.offset[1]
             color = ARROW_COLOR
-            if a.state == "blocked":
+            # 提示箭头变绿色
+            if a == self.tip_arrow:
+                color = (80, 220, 120)
+            elif a.state == "blocked":
                 color = ARROW_BLOCKED
             elif a.state == "flying":
                 color = ARROW_FLYING
@@ -398,6 +486,7 @@ class GameScreen:
 
         self.restart_btn.draw(surface)
         self.back_btn.draw(surface)
+        self.tip_btn.draw(surface)
 
         if self.status == "win":
             self._draw_result(surface, "通关！", (120, 255, 160))
